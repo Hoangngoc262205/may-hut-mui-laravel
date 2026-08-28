@@ -1,0 +1,6 @@
+@extends('layouts.admin')
+@section('title', 'Thương hiệu')
+@section('page_title','Thương hiệu')
+@section('content')
+<div class="admin-page"><div class="admin-toolbar"><div><h2>Thương hiệu sản phẩm</h2><p>{{ $brands->total() }} thương hiệu</p></div><a class="admin-primary" href="{{ route('admin.brands.create') }}">+ Thêm thương hiệu</a></div><section class="admin-panel"><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Tên thương hiệu</th><th>Slug</th><th>Số sản phẩm</th><th>Trạng thái</th><th></th></tr></thead><tbody>@forelse($brands as $item)<tr><td><strong>{{ $item->name }}</strong></td><td>{{ $item->slug }}</td><td>{{ $item->products_count }}</td><td><span class="status {{ $item->status==='active'?'status-completed':'status-cancelled' }}">{{ $item->status==='active'?'Hoạt động':'Tạm ẩn' }}</span></td><td class="actions"><a href="{{ route('admin.brands.edit',$item) }}">Sửa</a><form method="POST" action="{{ route('admin.brands.destroy',$item) }}" onsubmit="return confirm('Xóa thương hiệu này?')">@csrf @method('DELETE')<button>Xóa</button></form></td></tr>@empty<tr><td colspan="5" class="empty-cell">Chưa có thương hiệu.</td></tr>@endforelse</tbody></table></div><div class="admin-pagination">{{ $brands->links() }}</div></section></div>
+@endsection

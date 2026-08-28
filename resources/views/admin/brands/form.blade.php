@@ -1,0 +1,6 @@
+@extends('layouts.admin')
+@section('title',$brand->exists?'Sửa thương hiệu':'Thêm thương hiệu')
+@section('page_title',$brand->exists?'Sửa thương hiệu':'Thêm thương hiệu')
+@section('content')
+<div class="admin-page"><section class="admin-panel form-narrow"><form method="POST" action="{{ $brand->exists ? route('admin.brands.update',$brand) : route('admin.brands.store') }}">@csrf @if($brand->exists) @method('PUT') @endif<div class="form-field"><label>Tên thương hiệu</label><input name="name" value="{{ old('name',$brand->name) }}" required>@error('name')<small class="error">{{ $message }}</small>@enderror</div><div class="form-field"><label>Mô tả</label><textarea name="description" rows="5">{{ old('description',$brand->description) }}</textarea></div><div class="form-field"><label>Trạng thái</label><select name="status"><option value="active" @selected(old('status',$brand->status ?: 'active')==='active')>Hoạt động</option><option value="inactive" @selected(old('status',$brand->status)==='inactive')>Tạm ẩn</option></select></div><div class="form-actions"><button class="admin-primary">Lưu</button><a class="admin-secondary" href="{{ route('admin.brands.index') }}">Hủy</a></div></form></section></div>
+@endsection

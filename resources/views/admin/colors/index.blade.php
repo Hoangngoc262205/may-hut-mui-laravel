@@ -1,0 +1,6 @@
+@extends('layouts.admin')
+@section('title','Màu sắc')
+@section('page_title','Màu sắc')
+@section('content')
+<div class="admin-page"><div class="admin-toolbar"><div><h2>Màu sắc</h2><p>{{ $colors->total() }} bản ghi</p></div><a class="admin-primary" href="{{ route('admin.colors.create') }}">+ Thêm màu</a></div><section class="admin-panel"><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Màu sắc</th><th>Mã màu</th><th>Số variant</th><th>Trạng thái</th><th></th></tr></thead><tbody>@forelse($colors as $item)<tr><td><strong>{{ $item->name }}</strong></td><td><span class="color-dot" style="background:{{ $item->hex_code }}"></span>{{ $item->hex_code }}</td><td>{{ $item->variants_count }}</td><td><span class="status {{ $item->status==='active'?'status-completed':'status-cancelled' }}">{{ $item->status==='active'?'Hoạt động':'Tạm ẩn' }}</span></td><td class="actions"><a href="{{ route('admin.colors.edit',$item) }}">Sửa</a><form method="POST" action="{{ route('admin.colors.destroy',$item) }}" onsubmit="return confirm('Xóa màu này?')">@csrf @method('DELETE')<button>Xóa</button></form></td></tr>@empty<tr><td colspan="5" class="empty-cell">Chưa có dữ liệu.</td></tr>@endforelse</tbody></table></div><div class="admin-pagination">{{ $colors->links() }}</div></section></div>
+@endsection

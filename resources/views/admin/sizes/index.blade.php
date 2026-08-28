@@ -1,0 +1,6 @@
+@extends('layouts.admin')
+@section('title','Kích thước')
+@section('page_title','Kích thước')
+@section('content')
+<div class="admin-page"><div class="admin-toolbar"><div><h2>Kích thước</h2><p>{{ $sizes->total() }} bản ghi</p></div><a class="admin-primary" href="{{ route('admin.sizes.create') }}">+ Thêm kích thước</a></div><section class="admin-panel"><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Kích thước</th><th>Số variant</th><th>Trạng thái</th><th></th></tr></thead><tbody>@forelse($sizes as $item)<tr><td><strong>{{ $item->name }}</strong></td><td>{{ $item->variants_count }}</td><td><span class="status {{ $item->status==='active'?'status-completed':'status-cancelled' }}">{{ $item->status==='active'?'Hoạt động':'Tạm ẩn' }}</span></td><td class="actions"><a href="{{ route('admin.sizes.edit',$item) }}">Sửa</a><form method="POST" action="{{ route('admin.sizes.destroy',$item) }}" onsubmit="return confirm('Xóa kích thước này?')">@csrf @method('DELETE')<button>Xóa</button></form></td></tr>@empty<tr><td colspan="4" class="empty-cell">Chưa có dữ liệu.</td></tr>@endforelse</tbody></table></div><div class="admin-pagination">{{ $sizes->links() }}</div></section></div>
+@endsection

@@ -1,0 +1,6 @@
+@extends('layouts.admin')
+@section('title', 'Danh mục')
+@section('page_title','Danh mục')
+@section('content')
+<div class="admin-page"><div class="admin-toolbar"><div><h2>Danh mục sản phẩm</h2><p>{{ $categories->total() }} danh mục</p></div><a class="admin-primary" href="{{ route('admin.categories.create') }}">+ Thêm danh mục</a></div><section class="admin-panel"><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Tên danh mục</th><th>Slug</th><th>Số sản phẩm</th><th>Trạng thái</th><th></th></tr></thead><tbody>@forelse($categories as $item)<tr><td><strong>{{ $item->name }}</strong></td><td>{{ $item->slug }}</td><td>{{ $item->products_count }}</td><td><span class="status {{ $item->status==='active'?'status-completed':'status-cancelled' }}">{{ $item->status==='active'?'Hoạt động':'Tạm ẩn' }}</span></td><td class="actions"><a href="{{ route('admin.categories.edit',$item) }}">Sửa</a><form method="POST" action="{{ route('admin.categories.destroy',$item) }}" onsubmit="return confirm('Xóa danh mục này?')">@csrf @method('DELETE')<button>Xóa</button></form></td></tr>@empty<tr><td colspan="5" class="empty-cell">Chưa có danh mục.</td></tr>@endforelse</tbody></table></div><div class="admin-pagination">{{ $categories->links() }}</div></section></div>
+@endsection

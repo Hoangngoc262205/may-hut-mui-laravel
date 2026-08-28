@@ -1,0 +1,6 @@
+@extends('layouts.admin')
+@section('title',$category->exists?'Sửa danh mục':'Thêm danh mục')
+@section('page_title',$category->exists?'Sửa danh mục':'Thêm danh mục')
+@section('content')
+<div class="admin-page"><section class="admin-panel form-narrow"><form method="POST" action="{{ $category->exists ? route('admin.categories.update',$category) : route('admin.categories.store') }}">@csrf @if($category->exists) @method('PUT') @endif<div class="form-field"><label>Tên danh mục</label><input name="name" value="{{ old('name',$category->name) }}" required>@error('name')<small class="error">{{ $message }}</small>@enderror</div><div class="form-field"><label>Mô tả</label><textarea name="description" rows="5">{{ old('description',$category->description) }}</textarea></div><div class="form-field"><label>Trạng thái</label><select name="status"><option value="active" @selected(old('status',$category->status ?: 'active')==='active')>Hoạt động</option><option value="inactive" @selected(old('status',$category->status)==='inactive')>Tạm ẩn</option></select></div><div class="form-actions"><button class="admin-primary">Lưu</button><a class="admin-secondary" href="{{ route('admin.categories.index') }}">Hủy</a></div></form></section></div>
+@endsection
