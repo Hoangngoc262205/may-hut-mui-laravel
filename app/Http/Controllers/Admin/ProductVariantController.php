@@ -85,6 +85,22 @@ class ProductVariantController extends Controller
         return redirect()->route('admin.product-variants.index', ['product_id' => $productId])->with('success', 'Đã xóa variant.');
     }
 
+    public function quickStock(Request $request, ProductVariant $productVariant)
+    {
+        $request->validate([
+            'stock' => ['required', 'integer', 'min:0'],
+        ], [
+            'stock.required' => 'Vui lòng nhập số lượng kho.',
+            'stock.min' => 'Số lượng kho không được nhỏ hơn 0.',
+        ]);
+
+        $productVariant->update([
+            'stock' => (int) $request->input('stock'),
+        ]);
+
+        return back()->with('success', 'Đã cập nhật tồn kho thành công cho phân loại [' . $productVariant->variant_name . ']. Số lượng hiện tại: ' . $productVariant->stock);
+    }
+
     private function validated(Request $request, ?ProductVariant $variant = null): array
     {
         return $request->validate([

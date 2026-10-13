@@ -217,5 +217,7 @@ class DatabaseSeeder extends Seeder
                 );
             }
         }
+
+        $this->call(BestSellingProductsSeeder::class);
     }
 }

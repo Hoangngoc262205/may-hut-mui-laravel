@@ -19,6 +19,7 @@
                             <th>Mã đơn</th>
                             <th>Ngày đặt</th>
                             <th>Sản phẩm</th>
+                            <th>Phí ship</th>
                             <th>Tổng tiền</th>
                             <th>Trạng thái</th>
                             <th></th>
@@ -30,12 +31,13 @@
                                 <td><strong>{{ $order->order_code }}</strong></td>
                                 <td>{{ $order->created_at->format('d/m/Y H:i') }}</td>
                                 <td>{{ $order->items_count }}</td>
+                                <td>{{ number_format($order->shipping_fee, 0, ',', '.') }}đ</td>
                                 <td>{{ number_format($order->total, 0, ',', '.') }}đ</td>
                                 <td><span class="status-badge status-{{ $order->status }}">{{ $order->statusLabel() }}</span></td>
                                 <td><a href="{{ route('orders.show', $order) }}">Chi tiết</a></td>
                             </tr>
                         @empty
-                            <tr><td colspan="6">Bạn chưa có đơn hàng nào.</td></tr>
+                            <tr><td colspan="7">Bạn chưa có đơn hàng nào.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

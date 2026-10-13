@@ -53,4 +53,9 @@ class ProductVariant extends Model
 
         return trim($size.' - '.$color, ' -');
     }
+
+    public function getImagePathAttribute(): string
+    {
+        return $this->product?->imagePath($this->image) ?: 'images/products/hood-default.svg';
+    }
 }

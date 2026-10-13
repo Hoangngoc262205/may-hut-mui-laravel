@@ -4,26 +4,38 @@
 
 @section('content')
 <section class="auth-page">
-    <form method="POST" action="{{ route('login.post') }}" class="auth-card" data-loading-form>
-        @csrf
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="auth-badge">⌂</div>
+                <span class="eyebrow">WELCOME BACK</span>
+                <h1>Đăng nhập</h1>
+                <p>Đăng nhập để mua sắm và quản lý đơn hàng.</p>
+            </div>
 
-        <span class="eyebrow">Welcome back</span>
-        <h1>Đăng nhập</h1>
+            <form method="POST" action="{{ route('login.post') }}" class="auth-form" data-loading-form>
+                @csrf
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" value="{{ old('email') }}" placeholder="Nhập email của bạn" required autofocus>
+                </div>
+                <div class="form-group">
+                    <label for="password">Mật khẩu</label>
+                    <input type="password" id="password" name="password" placeholder="Nhập mật khẩu" required>
+                </div>
+                <div class="form-options">
+                    <label class="remember-me">
+                        <input type="checkbox" name="remember" value="1">
+                        <span>Ghi nhớ đăng nhập</span>
+                    </label>
+                </div>
+                <button type="submit" class="auth-submit">Đăng nhập</button>
+            </form>
 
-        <label for="login-email">Email</label>
-        <input id="login-email" type="email" name="email" value="{{ old('email') }}" placeholder="Nhập email của bạn" required autofocus>
-
-        <label for="login-password">Mật khẩu</label>
-        <input id="login-password" type="password" name="password" placeholder="Nhập mật khẩu" required>
-
-        <label class="check-row" for="remember-login">
-            <input id="remember-login" type="checkbox" name="remember" value="1">
-            <span>Ghi nhớ đăng nhập</span>
-        </label>
-
-        <button class="btn btn-dark full" type="submit">Đăng nhập</button>
-
-        <p>Chưa có tài khoản? <a href="{{ route('register') }}">Đăng ký ngay</a></p>
-    </form>
+            <div class="auth-register">
+                Chưa có tài khoản? <a href="{{ route('register') }}">Đăng ký ngay</a>
+            </div>
+        </div>
+    </div>
 </section>
 @endsection

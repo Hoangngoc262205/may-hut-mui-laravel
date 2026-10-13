@@ -30,6 +30,16 @@ class AuthController extends Controller
         if (Auth::attempt($credentials, $remember)) {
             $request->session()->regenerate();
 
+            // Tài khoản khách hàng phải xác thực email trước khi sử dụng chức năng mua sắm.
+            if (!Auth::user()->isAdmin() && !Auth::user()->hasVerifiedEmail()) {
+                Auth::user()->sendEmailVerificationNotification();
+
+                return redirect()->route('verification.notice')->with(
+                    'success',
+                    'Vui lòng xác thực email trước khi tiếp tục.'
+                );
+            }
+
             return Auth::user()->isAdmin()
                 ? redirect()->intended(route('admin.dashboard'))->with('success', 'Đăng nhập quản trị thành công.')
                 : redirect()->intended(route('home'))->with('success', 'Đăng nhập thành công.');
@@ -72,7 +82,13 @@ class AuthController extends Controller
 
         Auth::login($user);
 
-        return redirect()->route('home')->with('success', 'Tạo tài khoản thành công.');
+        // Gửi email xác thực ngay sau khi đăng ký.
+        $user->sendEmailVerificationNotification();
+
+        return redirect()->route('verification.notice')->with(
+            'success',
+            'Tài khoản đã được tạo. Vui lòng kiểm tra email để xác thực tài khoản.'
+        );
     }
 
     public function logout(Request $request)

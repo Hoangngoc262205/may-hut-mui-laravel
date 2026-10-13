@@ -10,20 +10,50 @@ class OrderController extends Controller
 {
     public function index()
     {
-        $orders = Order::where('user_id', Auth::id())
+        $orders = Order::query()
+            ->where(
+                'user_id',
+                Auth::id()
+            )
             ->withCount('items')
             ->latest()
             ->paginate(10);
 
-        return view('orders.index', compact('orders'));
+        return view(
+            'orders.index',
+            compact('orders')
+        );
     }
 
     public function show(Order $order)
     {
-        abort_unless($order->user_id === Auth::id(), 403);
+        /*
+        |--------------------------------------------------------------------------
+        | Chỉ chủ đơn hàng mới được xem
+        |--------------------------------------------------------------------------
+        */
 
-        $order->load('items.variant.product.images', 'items.variant.size', 'items.variant.color');
+        abort_unless(
+            (int) $order->user_id ===
+                (int) Auth::id(),
+            403
+        );
 
-        return view('orders.show', compact('order'));
+        /*
+        |--------------------------------------------------------------------------
+        | Load dữ liệu đơn hàng
+        |--------------------------------------------------------------------------
+        */
+
+        $order->load([
+            'items.variant.product.images',
+            'items.variant.size',
+            'items.variant.color',
+        ]);
+
+        return view(
+            'orders.show',
+            compact('order')
+        );
     }
 }

@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use App\Models\Category;
+use App\Models\Color;
 use App\Models\Product;
 use App\Models\ProductImage;
+use App\Models\Size;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -31,6 +33,8 @@ class ProductController extends Controller
             'product' => new Product(),
             'categories' => Category::orderBy('name')->get(),
             'brands' => Brand::orderBy('name')->get(),
+            'sizes' => Size::orderBy('name')->get(),
+            'colors' => Color::orderBy('name')->get(),
         ]);
     }
 
@@ -42,7 +46,41 @@ class ProductController extends Controller
         $product = Product::create($data);
         $product->detail()->create($this->detailData($request));
 
-        return redirect()->route('admin.products.show', $product)->with('success', 'Đã tạo sản phẩm.');
+        // 1. Upload initial images if provided
+        if ($request->hasFile('images')) {
+            $request->validate([
+                'images.*' => ['image', 'mimes:jpg,jpeg,png,webp,gif', 'max:4096'],
+            ], [
+                'images.*.image' => 'File tải lên phải là hình ảnh hợp lệ.',
+            ]);
+
+            foreach ($request->file('images', []) as $index => $image) {
+                $path = $image->store('products', 'public');
+                $product->images()->create([
+                    'image' => 'storage/'.$path,
+                    'is_primary' => $index === 0,
+                    'sort_order' => $index + 1,
+                ]);
+            }
+        }
+
+        // 2. Create initial variant if price and options are provided
+        if ($request->filled('initial_price') && $request->filled('size_id') && $request->filled('color_id')) {
+            $sku = $request->filled('sku')
+                ? trim($request->input('sku'))
+                : 'MH-' . strtoupper(Str::random(6));
+
+            $product->variants()->create([
+                'size_id' => $request->input('size_id'),
+                'color_id' => $request->input('color_id'),
+                'sku' => $sku,
+                'price' => (int) $request->input('initial_price'),
+                'stock' => (int) $request->input('initial_stock', 10),
+                'status' => 'active',
+            ]);
+        }
+
+        return redirect()->route('admin.products.show', $product)->with('success', 'Đã tạo sản phẩm thành công kèm phân loại và tồn kho.');
     }
 
     public function show(Product $product)
@@ -54,12 +92,14 @@ class ProductController extends Controller
 
     public function edit(Product $product)
     {
-        $product->load('detail');
+        $product->load('detail', 'images', 'variants');
 
         return view('admin.products.form', [
             'product' => $product,
             'categories' => Category::orderBy('name')->get(),
             'brands' => Brand::orderBy('name')->get(),
+            'sizes' => Size::orderBy('name')->get(),
+            'colors' => Color::orderBy('name')->get(),
         ]);
     }
 

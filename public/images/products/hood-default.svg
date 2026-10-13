@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="650" viewBox="0 0 900 650" role="img" aria-labelledby="title desc">
+  <title id="title">Máy hút mùi</title>
+  <desc id="desc">Ảnh dự phòng cho sản phẩm máy hút mùi</desc>
+  <rect width="900" height="650" fill="#f6f7f9"/>
+  <rect x="180" y="172" width="540" height="74" rx="18" fill="#2b3440"/>
+  <path d="M246 246h408l-62 182H308z" fill="#d9dee5"/>
+  <path d="M286 284h328l-38 104H324z" fill="#ffffff"/>
+  <rect x="330" y="420" width="240" height="28" rx="14" fill="#2b3440"/>
+  <circle cx="370" cy="209" r="10" fill="#ef6c4e"/>
+  <circle cx="410" cy="209" r="10" fill="#ef6c4e"/>
+  <circle cx="450" cy="209" r="10" fill="#ef6c4e"/>
+  <text x="450" y="520" text-anchor="middle" fill="#6b7280" font-family="Arial, sans-serif" font-size="28" font-weight="700">Máy hút mùi Store</text>
+</svg>

@@ -3,91 +3,104 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
-use App\Models\Cart;
+use App\Http\Requests\AddToCartRequest;
 use App\Models\CartItem;
-use App\Models\ProductVariant;
+use App\Services\CartService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class CartController extends Controller
 {
+    public function __construct(private readonly CartService $cartService)
+    {
+    }
+
+    /**
+     * Hiển thị giỏ hàng của người dùng hiện tại kèm kiểm tra tồn kho.
+     */
     public function index()
     {
-        $cart = $this->cart()->load('items.variant.product.images', 'items.variant.size', 'items.variant.color');
+        $cart = $this->cartService->getCart(Auth::id());
 
         return view('cart.index', compact('cart'));
     }
 
-    public function store(Request $request)
+    /**
+     * Thêm sản phẩm vào giỏ hàng thông qua AddToCartRequest & CartService.
+     */
+    public function store(AddToCartRequest $request)
     {
-        $data = $request->validate([
-            'product_variant_id' => ['required', 'exists:product_variants,id'],
-            'quantity' => ['required', 'integer', 'min:1'],
-        ], [
-            'product_variant_id.required' => 'Vui lòng chọn phân loại sản phẩm.',
-            'quantity.min' => 'Số lượng phải lớn hơn 0.',
-        ]);
-
-        $variant = ProductVariant::with('product')->active()->findOrFail($data['product_variant_id']);
-
-        if ($variant->stock < $data['quantity']) {
-            return back()->withInput()->with('error', 'Số lượng vượt quá tồn kho hiện có.');
-        }
-
-        $cart = $this->cart();
-        $item = $cart->items()->where('product_variant_id', $variant->id)->first();
-        $newQuantity = ($item?->quantity ?? 0) + (int) $data['quantity'];
-
-        if ($newQuantity > $variant->stock) {
-            return back()->withInput()->with('error', 'Giỏ hàng đã có sản phẩm này, tổng số lượng vượt quá tồn kho.');
-        }
-
-        $cart->items()->updateOrCreate(
-            ['product_variant_id' => $variant->id],
-            ['quantity' => $newQuantity, 'price' => $variant->price]
+        $result = $this->cartService->addToCart(
+            userId: Auth::id(),
+            variantId: (int) $request->validated('product_variant_id'),
+            quantity: (int) $request->validated('quantity')
         );
 
-        if ($request->boolean('buy_now')) {
-            return redirect()->route('checkout.index')->with('success', 'Sản phẩm đã sẵn sàng để đặt hàng.');
+        if (! $result['success']) {
+            return back()->withInput()->with('error', $result['message']);
         }
 
-        return back()->with('success', 'Đã thêm sản phẩm vào giỏ hàng.');
+        if ($request->boolean('buy_now')) {
+            return redirect()
+                ->route('checkout.index')
+                ->with('success', 'Sản phẩm đã được thêm và sẵn sàng để đặt hàng.');
+        }
+
+        return back()->with('success', $result['message']);
     }
 
+    /**
+     * Cập nhật số lượng của một mặt hàng trong giỏ.
+     */
     public function update(Request $request, CartItem $cartItem)
     {
-        abort_unless($cartItem->cart->user_id === Auth::id(), 403);
+        abort_unless(
+            $cartItem->cart && (int) $cartItem->cart->user_id === (int) Auth::id(),
+            403
+        );
 
-        $data = $request->validate([
+        $request->validate([
             'quantity' => ['required', 'integer', 'min:1'],
         ], [
+            'quantity.required' => 'Vui lòng nhập số lượng.',
             'quantity.min' => 'Số lượng phải lớn hơn 0.',
         ]);
 
-        $variant = $cartItem->variant;
+        $result = $this->cartService->updateQuantity(
+            userId: Auth::id(),
+            cartItemId: $cartItem->id,
+            quantity: (int) $request->input('quantity')
+        );
 
-        if ($data['quantity'] > $variant->stock) {
-            return back()->with('error', 'Số lượng vượt quá tồn kho hiện có.');
+        if (! $result['success']) {
+            return back()->with('error', $result['message']);
         }
 
-        $cartItem->update([
-            'quantity' => $data['quantity'],
-            'price' => $variant->price,
-        ]);
-
-        return back()->with('success', 'Đã cập nhật giỏ hàng.');
+        return back()->with('success', $result['message']);
     }
 
+    /**
+     * Xóa một mặt hàng khỏi giỏ.
+     */
     public function destroy(CartItem $cartItem)
     {
-        abort_unless($cartItem->cart->user_id === Auth::id(), 403);
-        $cartItem->delete();
+        abort_unless(
+            $cartItem->cart && (int) $cartItem->cart->user_id === (int) Auth::id(),
+            403
+        );
+
+        $this->cartService->removeItem(Auth::id(), $cartItem->id);
 
         return back()->with('success', 'Đã xóa sản phẩm khỏi giỏ hàng.');
     }
 
-    private function cart(): Cart
+    /**
+     * Dọn sạch toàn bộ giỏ hàng.
+     */
+    public function clear()
     {
-        return Cart::firstOrCreate(['user_id' => Auth::id()]);
+        $this->cartService->clearCart(Auth::id());
+
+        return back()->with('success', 'Đã làm trống giỏ hàng.');
     }
 }

@@ -28,7 +28,7 @@
                             <tr>
                                 <td>
                                     <div class="cart-product">
-                                        <img src="{{ asset($item->variant?->image ?: $item->variant?->product?->primary_image_path ?: 'images/products/hood-default.svg') }}" alt="{{ $item->product_name }}">
+                                        <img src="{{ asset($item->variant?->image_path ?? 'images/products/hood-default.svg') }}" alt="{{ $item->product_name }}">
                                         <div>
                                             <strong>{{ $item->product_name }}</strong>
                                             <span>{{ $item->variant_name }}</span>
@@ -47,12 +47,21 @@
                 <h2>Thông tin giao hàng</h2>
                 <p><strong>{{ $order->customer_name }}</strong></p>
                 <p>{{ $order->phone }}</p>
-                <p>{{ $order->address }}</p>
+                @if($order->email)<p>{{ $order->email }}</p>@endif
+                <p>{{ $order->fullShippingAddress() }}</p>
                 @if($order->note)
                     <p>Ghi chú: {{ $order->note }}</p>
                 @endif
+                <div class="summary-line">
+                    <span>Tạm tính</span>
+                    <strong>{{ number_format($order->subtotal, 0, ',', '.') }}đ</strong>
+                </div>
+                <div class="summary-line">
+                    <span>Phí vận chuyển</span>
+                    <strong>{{ number_format($order->shipping_fee, 0, ',', '.') }}đ</strong>
+                </div>
                 <div class="summary-line total">
-                    <span>Tổng tiền</span>
+                    <span>Tổng thanh toán</span>
                     <strong>{{ number_format($order->total, 0, ',', '.') }}đ</strong>
                 </div>
             </aside>

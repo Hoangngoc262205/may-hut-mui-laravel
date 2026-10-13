@@ -56,7 +56,28 @@ class Product extends Model
         $images = $this->relationLoaded('images') ? $this->images : $this->images()->get();
         $image = $images->firstWhere('is_primary', true) ?: $images->first();
 
-        return $image?->image ?: 'images/products/hood-default.svg';
+        return $this->imagePath($image?->image);
+    }
+
+    public function imagePath(?string $path): string
+    {
+        if (! $path) {
+            return 'images/products/hood-default.svg';
+        }
+
+        if (file_exists(public_path($path))) {
+            return $path;
+        }
+
+        if (file_exists(public_path('storage/' . $path))) {
+            return 'storage/' . $path;
+        }
+
+        if (str_starts_with($path, 'storage/') && file_exists(public_path($path))) {
+            return $path;
+        }
+
+        return 'images/products/hood-default.svg';
     }
 
     public function getMinPriceAttribute(): int

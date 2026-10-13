@@ -36,7 +36,7 @@
                                     <tr>
                                         <td>
                                             <div class="cart-product">
-                                                <img src="{{ asset($item->variant?->image ?: $item->variant?->product?->primary_image_path) }}" alt="{{ $item->variant?->product?->name }}">
+                                                <img src="{{ asset($item->variant?->image_path ?? 'images/products/hood-default.svg') }}" alt="{{ $item->variant?->product?->name }}">
                                                 <div>
                                                     <strong>{{ $item->variant?->product?->name }}</strong>
                                                     <span>{{ $item->variant?->variant_name }} · SKU {{ $item->variant?->sku }}</span>
@@ -78,6 +78,11 @@
                         </div>
                         <a class="btn btn-dark full" href="{{ route('checkout.index') }}">Tiến hành đặt hàng</a>
                         <a class="btn btn-outline full" href="{{ route('products.index') }}">Tiếp tục mua sắm</a>
+                        <form method="POST" action="{{ route('cart.clear') }}">
+                            @csrf
+                            @method('DELETE')
+                            <button class="btn btn-outline full" type="submit">Làm trống giỏ hàng</button>
+                        </form>
                     </aside>
                 </div>
             @endif

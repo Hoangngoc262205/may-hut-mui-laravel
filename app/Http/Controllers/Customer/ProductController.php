@@ -109,7 +109,7 @@ class ProductController extends Controller
             'sku' => $variant->sku,
             'price' => (int) $variant->price,
             'stock' => (int) $variant->stock,
-            'image_url' => asset($variant->image ?: $product->primary_image_path),
+            'image_url' => asset($variant->image_path),
         ]);
 
         $relatedProducts = Product::active()

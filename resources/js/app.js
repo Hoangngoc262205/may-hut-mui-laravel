@@ -4,6 +4,12 @@ function formatVnd(value) {
     return new Intl.NumberFormat('vi-VN').format(Number(value || 0)) + 'đ';
 }
 
+/*
+|--------------------------------------------------------------------------
+| PRODUCT DETAIL - GALLERY + VARIANTS
+|--------------------------------------------------------------------------
+*/
+
 function initProductGalleryAndVariants() {
     const variants = Array.isArray(window.productVariants)
         ? window.productVariants
@@ -14,6 +20,10 @@ function initProductGalleryAndVariants() {
     const skuEl = document.getElementById('variantSku');
     const stockEl = document.getElementById('variantStock');
     const selectedVariant = document.getElementById('selectedVariantId');
+    const variantMessage = document.getElementById('variantMessage');
+    const addButton = document.getElementById('addToCartButton');
+    const buyNowButton = document.getElementById('buyNowButton');
+    const quantity = document.getElementById('quantity');
 
     const sizeButtons = [
         ...document.querySelectorAll('[data-size-id]')
@@ -27,11 +37,9 @@ function initProductGalleryAndVariants() {
         ...document.querySelectorAll('[data-gallery-image]')
     ];
 
-    const quantity = document.getElementById('quantity');
-
     /*
     |--------------------------------------------------------------------------
-    | Nếu không phải trang chi tiết sản phẩm
+    | Nếu không phải trang product detail
     |--------------------------------------------------------------------------
     */
 
@@ -42,64 +50,45 @@ function initProductGalleryAndVariants() {
 
     /*
     |--------------------------------------------------------------------------
-    | Không có variant
+    | DEFAULT VARIANT
     |--------------------------------------------------------------------------
     */
 
-    if (!variants.length) {
-        initGalleryOnly(mainImage, galleryButtons);
-        initQuantity();
-        return;
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Variant mặc định
-    |--------------------------------------------------------------------------
-    */
-
-    let current =
+    const previewVariant =
         variants.find(
             (variant) =>
                 String(variant.id) === String(window.defaultVariantId)
-        ) || variants[0];
-
-    let selectedSize = current?.size_id ?? null;
-    let selectedColor = current?.color_id ?? null;
-
+        ) ||
+        variants.find((variant) => Number(variant.stock || 0) > 0) ||
+        variants[0] ||
+        null;
 
     /*
     |--------------------------------------------------------------------------
-    | Tìm variant theo size + color
+    | Tự chọn size/color của default variant
     |--------------------------------------------------------------------------
+    |
+    | Đây là phần quan trọng chị sửa.
+    | Trước đây previewVariant chỉ dùng để hiển thị,
+    | nhưng selectedSize / selectedColor vẫn null.
+    |
     */
 
-    function findVariant() {
-        return variants.find((variant) => {
+    let selectedSize = previewVariant?.size_id
+        ? String(previewVariant.size_id)
+        : null;
 
-            const sizeMatched =
-                selectedSize === null ||
-                selectedSize === undefined ||
-                String(variant.size_id) === String(selectedSize);
-
-            const colorMatched =
-                selectedColor === null ||
-                selectedColor === undefined ||
-                String(variant.color_id) === String(selectedColor);
-
-            return sizeMatched && colorMatched;
-        });
-    }
-
+    let selectedColor = previewVariant?.color_id
+        ? String(previewVariant.color_id)
+        : null;
 
     /*
     |--------------------------------------------------------------------------
-    | Đổi ảnh
+    | Đổi ảnh chính
     |--------------------------------------------------------------------------
     */
 
     function changeMainImage(src) {
-
         if (!mainImage || !src) {
             return;
         }
@@ -107,16 +96,58 @@ function initProductGalleryAndVariants() {
         mainImage.src = src;
 
         galleryButtons.forEach((button) => {
-
-            const buttonImage = button.dataset.galleryImage;
-
             button.classList.toggle(
                 'active',
-                buttonImage === src
+                button.dataset.galleryImage === src
             );
         });
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Tìm đúng variant
+    |--------------------------------------------------------------------------
+    */
+
+    function exactVariant() {
+        if (sizeButtons.length && !selectedSize) {
+            return null;
+        }
+
+        if (colorButtons.length && !selectedColor) {
+            return null;
+        }
+
+        return (
+            variants.find((variant) => {
+                const sizeMatched =
+                    !sizeButtons.length ||
+                    String(variant.size_id) === String(selectedSize);
+
+                const colorMatched =
+                    !colorButtons.length ||
+                    String(variant.color_id) === String(selectedColor);
+
+                return sizeMatched && colorMatched;
+            }) || null
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Enable / Disable nút mua hàng
+    |--------------------------------------------------------------------------
+    */
+
+    function setButtonsEnabled(enabled) {
+        [addButton, buyNowButton].forEach((button) => {
+            if (!button) {
+                return;
+            }
+
+            button.disabled = !enabled;
+        });
+    }
 
     /*
     |--------------------------------------------------------------------------
@@ -124,381 +155,344 @@ function initProductGalleryAndVariants() {
     |--------------------------------------------------------------------------
     */
 
-    function render() {
+    function renderVariant() {
+        const current = exactVariant();
 
-        const foundVariant = findVariant();
+        const displayVariant = current || previewVariant;
 
-        if (foundVariant) {
-            current = foundVariant;
-        }
+        const hasRequiredOptions =
+            (!sizeButtons.length || Boolean(selectedSize)) &&
+            (!colorButtons.length || Boolean(selectedColor));
 
-        if (!current) {
-            return;
-        }
-
-
-        /*
-        | ID variant
-        */
-
-        selectedVariant.value = current.id;
-
+        const inStock =
+            current &&
+            Number(current.stock || 0) > 0;
 
         /*
-        | Giá
+        |--------------------------------------------------------------------------
+        | Hidden input gửi product_variant_id
+        |--------------------------------------------------------------------------
         */
 
-        if (priceEl) {
-            priceEl.textContent = formatVnd(current.price);
-        }
-
+        selectedVariant.value =
+            current && inStock
+                ? current.id
+                : '';
 
         /*
-        | SKU
+        |--------------------------------------------------------------------------
+        | Nút thêm giỏ / mua ngay
+        |--------------------------------------------------------------------------
         */
 
-        if (skuEl) {
-            skuEl.textContent =
-                current.sku || 'Đang cập nhật';
-        }
-
+        setButtonsEnabled(Boolean(current && inStock));
 
         /*
-        | Tồn kho
+        |--------------------------------------------------------------------------
+        | Thông tin variant
+        |--------------------------------------------------------------------------
         */
 
-        if (stockEl) {
-
-            const stock = Number(current.stock) || 0;
-
-            const inStock = stock > 0;
-
-            stockEl.textContent = inStock
-                ? `✓ Còn ${stock} sản phẩm`
-                : 'Hết hàng';
-
-            stockEl.classList.toggle(
-                'out',
-                !inStock
-            );
-        }
-
-
-        /*
-        | Ảnh variant
-        */
-
-        const variantImage =
-            current.image_url ||
-            current.image ||
-            null;
-
-        if (variantImage) {
-            changeMainImage(variantImage);
-        }
-
-
-        /*
-        | Giới hạn số lượng theo tồn kho
-        */
-
-        if (quantity) {
-
-            const stock =
-                Math.max(Number(current.stock) || 0, 1);
-
-            quantity.max = stock;
-
-            let value =
-                parseInt(quantity.value, 10) || 1;
-
-            if (value > stock) {
-                value = stock;
+        if (displayVariant) {
+            if (priceEl) {
+                priceEl.textContent =
+                    formatVnd(displayVariant.price);
             }
 
-            if (value < 1) {
-                value = 1;
+            if (skuEl) {
+                skuEl.textContent =
+                    displayVariant.sku || 'Đang cập nhật';
             }
 
-            quantity.value = value;
+            if (stockEl) {
+                const stock =
+                    Number(displayVariant.stock || 0);
+
+                stockEl.textContent =
+                    stock > 0
+                        ? `✓ Còn ${stock} sản phẩm`
+                        : 'Hết hàng';
+
+                stockEl.classList.toggle(
+                    'out',
+                    stock <= 0
+                );
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Đổi ảnh theo variant
+            |--------------------------------------------------------------------------
+            */
+
+            if (displayVariant.image_url) {
+                changeMainImage(
+                    displayVariant.image_url
+                );
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Giới hạn quantity theo stock
+            |--------------------------------------------------------------------------
+            */
+
+            if (quantity) {
+                const stock =
+                    Number(displayVariant.stock || 0);
+
+                if (stock > 0) {
+                    quantity.max = stock;
+
+                    const currentQuantity =
+                        parseInt(quantity.value, 10) || 1;
+
+                    quantity.value =
+                        Math.min(
+                            Math.max(currentQuantity, 1),
+                            stock
+                        );
+                }
+            }
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | Message
+        |--------------------------------------------------------------------------
+        */
+
+        if (variantMessage) {
+            if (!hasRequiredOptions) {
+                variantMessage.textContent =
+                    'Vui lòng chọn đủ kích thước và màu sắc.';
+
+                variantMessage.classList.remove('ok');
+            } else if (!current) {
+                variantMessage.textContent =
+                    'Phân loại này không tồn tại. Vui lòng chọn lại.';
+
+                variantMessage.classList.remove('ok');
+            } else if (!inStock) {
+                variantMessage.textContent =
+                    'Phân loại này đã hết hàng.';
+
+                variantMessage.classList.remove('ok');
+            } else {
+                const selectedNames = [
+                    current.color_name,
+                    current.size_name,
+                ].filter(Boolean);
+
+                variantMessage.textContent =
+                    selectedNames.length
+                        ? 'Đã chọn: ' + selectedNames.join(' - ')
+                        : 'Đã chọn phân loại sản phẩm.';
+
+                variantMessage.classList.add('ok');
+            }
+        }
 
         /*
-        | Active size
+        |--------------------------------------------------------------------------
+        | Active button
+        |--------------------------------------------------------------------------
         */
 
         sizeButtons.forEach((button) => {
-
-            const active =
-                String(button.dataset.sizeId) ===
-                String(selectedSize);
-
             button.classList.toggle(
                 'active',
-                active
+                String(button.dataset.sizeId) ===
+                    String(selectedSize)
             );
         });
 
-
-        /*
-        | Active color
-        */
-
         colorButtons.forEach((button) => {
-
-            const active =
-                String(button.dataset.colorId) ===
-                String(selectedColor);
-
             button.classList.toggle(
                 'active',
-                active
+                String(button.dataset.colorId) ===
+                    String(selectedColor)
             );
         });
     }
 
-
     /*
     |--------------------------------------------------------------------------
-    | Kiểm tra option còn hàng
+    | Kiểm tra option nào còn khả dụng
     |--------------------------------------------------------------------------
     */
 
     function refreshOptionAvailability() {
-
-        /*
-        | Size
-        */
-
         sizeButtons.forEach((button) => {
-
             const sizeId =
-                button.dataset.sizeId;
+                String(button.dataset.sizeId);
 
-            const available =
-                variants.some((variant) => {
+            const exists = variants.some((variant) => {
+                const sameSize =
+                    String(variant.size_id) === sizeId;
 
-                    const sameSize =
-                        String(variant.size_id) ===
-                        String(sizeId);
-
-                    const sameColor =
-                        selectedColor === null ||
-                        selectedColor === undefined ||
-                        String(variant.color_id) ===
+                const sameColor =
+                    !selectedColor ||
+                    String(variant.color_id) ===
                         String(selectedColor);
 
-                    const inStock =
-                        Number(variant.stock) > 0;
+                const inStock =
+                    Number(variant.stock || 0) > 0;
 
-                    return (
-                        sameSize &&
-                        sameColor &&
-                        inStock
-                    );
-                });
+                return (
+                    sameSize &&
+                    sameColor &&
+                    inStock
+                );
+            });
 
-            button.disabled = !available;
+            button.disabled = !exists;
         });
 
-
-        /*
-        | Color
-        */
-
         colorButtons.forEach((button) => {
-
             const colorId =
-                button.dataset.colorId;
+                String(button.dataset.colorId);
 
-            const available =
-                variants.some((variant) => {
+            const exists = variants.some((variant) => {
+                const sameColor =
+                    String(variant.color_id) === colorId;
 
-                    const sameColor =
-                        String(variant.color_id) ===
-                        String(colorId);
-
-                    const sameSize =
-                        selectedSize === null ||
-                        selectedSize === undefined ||
-                        String(variant.size_id) ===
+                const sameSize =
+                    !selectedSize ||
+                    String(variant.size_id) ===
                         String(selectedSize);
 
-                    const inStock =
-                        Number(variant.stock) > 0;
+                const inStock =
+                    Number(variant.stock || 0) > 0;
 
-                    return (
-                        sameColor &&
-                        sameSize &&
-                        inStock
-                    );
-                });
+                return (
+                    sameColor &&
+                    sameSize &&
+                    inStock
+                );
+            });
 
-            button.disabled = !available;
+            button.disabled = !exists;
         });
     }
 
-
     /*
     |--------------------------------------------------------------------------
-    | Chọn kích thước
+    | Chọn SIZE
     |--------------------------------------------------------------------------
     */
 
     sizeButtons.forEach((button) => {
-
         button.addEventListener('click', () => {
-
             if (button.disabled) {
                 return;
             }
 
             selectedSize =
-                button.dataset.sizeId;
-
+                String(button.dataset.sizeId);
 
             /*
-            | Kiểm tra màu hiện tại có tồn tại
-            | với size vừa chọn không
+            | Nếu màu hiện tại không còn phù hợp với size mới,
+            | bỏ màu để người dùng chọn lại.
             */
 
-            const currentCombinationExists =
+            const colorStillValid =
+                !selectedColor ||
                 variants.some((variant) => {
-
                     return (
                         String(variant.size_id) ===
-                        String(selectedSize) &&
-
+                            String(selectedSize) &&
                         String(variant.color_id) ===
-                        String(selectedColor)
+                            String(selectedColor) &&
+                        Number(variant.stock || 0) > 0
                     );
                 });
 
-
-            /*
-            | Nếu không tồn tại thì tự chọn
-            | màu đầu tiên còn hàng
-            */
-
-            if (!currentCombinationExists) {
-
-                const matchingVariant =
-                    variants.find((variant) => {
-
-                        return (
-                            String(variant.size_id) ===
-                            String(selectedSize) &&
-
-                            Number(variant.stock) > 0
-                        );
-                    });
-
-                if (matchingVariant) {
-
-                    selectedColor =
-                        matchingVariant.color_id;
-                }
+            if (!colorStillValid) {
+                selectedColor = null;
             }
 
-
-            render();
-
             refreshOptionAvailability();
+            renderVariant();
         });
     });
 
-
     /*
     |--------------------------------------------------------------------------
-    | Chọn màu sắc
+    | Chọn COLOR
     |--------------------------------------------------------------------------
     */
 
     colorButtons.forEach((button) => {
-
         button.addEventListener('click', () => {
-
             if (button.disabled) {
                 return;
             }
 
             selectedColor =
-                button.dataset.colorId;
-
+                String(button.dataset.colorId);
 
             /*
-            | Kiểm tra size hiện tại có tồn tại
-            | với màu vừa chọn không
+            | Nếu size hiện tại không còn phù hợp với màu mới,
+            | bỏ size để người dùng chọn lại.
             */
 
-            const currentCombinationExists =
+            const sizeStillValid =
+                !selectedSize ||
                 variants.some((variant) => {
-
                     return (
                         String(variant.color_id) ===
-                        String(selectedColor) &&
-
+                            String(selectedColor) &&
                         String(variant.size_id) ===
-                        String(selectedSize)
+                            String(selectedSize) &&
+                        Number(variant.stock || 0) > 0
                     );
                 });
 
-
-            /*
-            | Nếu không tồn tại thì tự chọn
-            | size đầu tiên còn hàng
-            */
-
-            if (!currentCombinationExists) {
-
-                const matchingVariant =
-                    variants.find((variant) => {
-
-                        return (
-                            String(variant.color_id) ===
-                            String(selectedColor) &&
-
-                            Number(variant.stock) > 0
-                        );
-                    });
-
-                if (matchingVariant) {
-
-                    selectedSize =
-                        matchingVariant.size_id;
-                }
+            if (!sizeStillValid) {
+                selectedSize = null;
             }
 
-
-            render();
-
             refreshOptionAvailability();
+            renderVariant();
         });
     });
 
-
     /*
     |--------------------------------------------------------------------------
-    | Gallery thumbnail
+    | Gallery
     |--------------------------------------------------------------------------
     */
 
     galleryButtons.forEach((button) => {
-
         button.addEventListener('click', () => {
-
-            const src =
-                button.dataset.galleryImage;
-
-            if (!src) {
-                return;
-            }
-
-            changeMainImage(src);
+            changeMainImage(
+                button.dataset.galleryImage
+            );
         });
     });
 
+    /*
+    |--------------------------------------------------------------------------
+    | Chặn submit nếu chưa có variant hợp lệ
+    |--------------------------------------------------------------------------
+    */
+
+    selectedVariant.form?.addEventListener(
+        'submit',
+        (event) => {
+            if (!selectedVariant.value) {
+                event.preventDefault();
+
+                if (variantMessage) {
+                    variantMessage.textContent =
+                        'Vui lòng chọn phân loại còn hàng trước khi mua.';
+
+                    variantMessage.classList.remove('ok');
+                }
+            }
+        }
+    );
 
     /*
     |--------------------------------------------------------------------------
@@ -506,30 +500,24 @@ function initProductGalleryAndVariants() {
     |--------------------------------------------------------------------------
     */
 
-    render();
-
     refreshOptionAvailability();
-
+    renderVariant();
     initQuantity();
 }
 
-
 /*
 |--------------------------------------------------------------------------
-| Gallery khi không có variant
+| GALLERY ONLY
 |--------------------------------------------------------------------------
 */
 
 function initGalleryOnly(mainImage, galleryButtons) {
-
     if (!mainImage) {
         return;
     }
 
     galleryButtons.forEach((button) => {
-
         button.addEventListener('click', () => {
-
             const src =
                 button.dataset.galleryImage;
 
@@ -540,7 +528,6 @@ function initGalleryOnly(mainImage, galleryButtons) {
             mainImage.src = src;
 
             galleryButtons.forEach((item) => {
-
                 item.classList.toggle(
                     'active',
                     item === button
@@ -550,15 +537,13 @@ function initGalleryOnly(mainImage, galleryButtons) {
     });
 }
 
-
 /*
 |--------------------------------------------------------------------------
-| Tăng / giảm số lượng
+| QUANTITY
 |--------------------------------------------------------------------------
 */
 
 function initQuantity() {
-
     const quantity =
         document.getElementById('quantity');
 
@@ -566,13 +551,7 @@ function initQuantity() {
         return;
     }
 
-
-    /*
-    | Không cho nhập số nhỏ hơn 1
-    */
-
-    quantity.addEventListener('input', () => {
-
+    const normalize = () => {
         let value =
             parseInt(quantity.value, 10) || 1;
 
@@ -583,51 +562,35 @@ function initQuantity() {
             value = 1;
         }
 
-        if (!Number.isNaN(max) && value > max) {
+        if (
+            !Number.isNaN(max) &&
+            max > 0 &&
+            value > max
+        ) {
             value = max;
         }
 
         quantity.value = value;
-    });
+    };
 
+    quantity.addEventListener(
+        'input',
+        normalize
+    );
 
-    /*
-    | Khi blur khỏi input
-    */
-
-    quantity.addEventListener('blur', () => {
-
-        let value =
-            parseInt(quantity.value, 10) || 1;
-
-        const max =
-            parseInt(quantity.max, 10);
-
-        if (value < 1) {
-            value = 1;
-        }
-
-        if (!Number.isNaN(max) && value > max) {
-            value = max;
-        }
-
-        quantity.value = value;
-    });
+    quantity.addEventListener(
+        'blur',
+        normalize
+    );
 }
-
 
 /*
 |--------------------------------------------------------------------------
-| Hàm tăng giảm số lượng
-|--------------------------------------------------------------------------
-| Dùng trực tiếp từ Blade:
-| onclick="changeQuantity(-1)"
-| onclick="changeQuantity(1)"
+| NÚT + / -
 |--------------------------------------------------------------------------
 */
 
 window.changeQuantity = function (value) {
-
     const quantity =
         document.getElementById('quantity');
 
@@ -643,25 +606,830 @@ window.changeQuantity = function (value) {
 
     current += Number(value) || 0;
 
-    if (current < 1) {
-        current = 1;
-    }
+    current = Math.max(current, 1);
 
-    if (!Number.isNaN(max) && current > max) {
-        current = max;
+    if (
+        !Number.isNaN(max) &&
+        max > 0
+    ) {
+        current = Math.min(current, max);
     }
 
     quantity.value = current;
 };
 
+/*
+|--------------------------------------------------------------------------
+| CHECKOUT - GHN LOCATION
+|--------------------------------------------------------------------------
+*/
+
+function initCheckoutLocations() {
+    const routes =
+        window.checkoutRoutes;
+
+    const form =
+        document.querySelector(
+            '[data-checkout-form]'
+        );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Không phải trang checkout
+    |--------------------------------------------------------------------------
+    */
+
+    if (!routes || !form) {
+        return;
+    }
+
+    const csrf =
+        document.querySelector(
+            'meta[name="csrf-token"]'
+        )?.content || '';
+
+    const subtotal =
+        Number(
+            document.getElementById(
+                'checkoutSubtotal'
+            )?.dataset.value || 0
+        );
+
+    const totalEl =
+        document.getElementById(
+            'checkoutTotal'
+        );
+
+    const shippingFeeEl =
+        document.getElementById(
+            'shippingFeeText'
+        );
+
+    const shippingMessage =
+        document.getElementById(
+            'shippingMessage'
+        );
+
+    const placeOrderButton =
+        document.getElementById(
+            'placeOrderButton'
+        );
+
+    const province =
+        document.getElementById(
+            'province_select'
+        );
+
+    const district =
+        document.getElementById(
+            'district_select'
+        );
+
+    const ward =
+        document.getElementById(
+            'ward_select'
+        );
+
+    const provinceName =
+        document.getElementById(
+            'province_name'
+        );
+
+    const districtName =
+        document.getElementById(
+            'district_name'
+        );
+
+    const wardName =
+        document.getElementById(
+            'ward_name'
+        );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Kiểm tra đủ element
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        !province ||
+        !district ||
+        !ward ||
+        !provinceName ||
+        !districtName ||
+        !wardName
+    ) {
+        console.error(
+            'Checkout location elements are missing.'
+        );
+
+        return;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Trạng thái phí ship
+    |--------------------------------------------------------------------------
+    */
+
+    let shippingFee = null;
+
+    /*
+    |--------------------------------------------------------------------------
+    | Fetch JSON
+    |--------------------------------------------------------------------------
+    */
+
+    async function fetchJson(
+        url,
+        options = {}
+    ) {
+        try {
+            const response =
+                await fetch(url, {
+                    ...options,
+
+                    headers: {
+                        Accept:
+                            'application/json',
+
+                        ...(options.method &&
+                        options.method !== 'GET'
+                            ? {
+                                  'X-CSRF-TOKEN':
+                                      csrf,
+                              }
+                            : {}),
+
+                        ...(options.headers || {}),
+                    },
+                });
+
+            const payload =
+                await response
+                    .json()
+                    .catch(() => ({}));
+
+            if (
+                !response.ok ||
+                payload.ok === false
+            ) {
+                throw new Error(
+                    payload.message ||
+                        `Không thể tải dữ liệu. Mã lỗi HTTP: ${response.status}`
+                );
+            }
+
+            return payload.data ?? [];
+        } catch (error) {
+            console.error(
+                'Checkout API error:',
+                error
+            );
+
+            throw error;
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Message
+    |--------------------------------------------------------------------------
+    */
+
+    function setMessage(
+        message,
+        isError = false
+    ) {
+        if (!shippingMessage) {
+            return;
+        }
+
+        shippingMessage.textContent =
+            message || '';
+
+        shippingMessage.classList.toggle(
+            'error',
+            Boolean(isError)
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Reset select
+    |--------------------------------------------------------------------------
+    */
+
+    function resetSelect(
+        select,
+        placeholder,
+        disabled = true
+    ) {
+        if (!select) {
+            return;
+        }
+
+        select.innerHTML =
+            `<option value="">${placeholder}</option>`;
+
+        select.disabled = disabled;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Đồng bộ tên vào hidden input
+    |--------------------------------------------------------------------------
+    */
+
+    function syncSelectedName(
+        select,
+        hidden
+    ) {
+        if (!select || !hidden) {
+            return;
+        }
+
+        hidden.value =
+            select.selectedOptions[0]
+                ?.dataset.name || '';
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cập nhật tổng tiền
+    |--------------------------------------------------------------------------
+    */
+
+    function updateTotal() {
+        const total =
+            subtotal +
+            Number(shippingFee || 0);
+
+        if (shippingFeeEl) {
+            shippingFeeEl.textContent =
+                shippingFee === null
+                    ? 'Chọn địa chỉ'
+                    : formatVnd(shippingFee);
+        }
+
+        if (totalEl) {
+            totalEl.textContent =
+                formatVnd(total);
+        }
+
+        /*
+        | Không cho đặt hàng nếu chưa tính được phí.
+        */
+
+        if (placeOrderButton) {
+            const locationReady =
+                Boolean(
+                    province.value &&
+                    district.value &&
+                    ward.value
+                );
+
+            placeOrderButton.disabled =
+                !locationReady ||
+                shippingFee === null;
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Fill option
+    |--------------------------------------------------------------------------
+    */
+
+    function fillOptions(
+        select,
+        items,
+        valueKey,
+        labelKey,
+        placeholder
+    ) {
+        if (!select) {
+            return;
+        }
+
+        select.innerHTML =
+            `<option value="">${placeholder}</option>`;
+
+        if (!Array.isArray(items)) {
+            select.disabled = true;
+            return;
+        }
+
+        items.forEach((item) => {
+            const option =
+                document.createElement('option');
+
+            option.value =
+                item[valueKey] ?? '';
+
+            option.textContent =
+                item[labelKey] ?? '';
+
+            option.dataset.name =
+                item[labelKey] ?? '';
+
+            select.appendChild(option);
+        });
+
+        select.disabled =
+            items.length === 0;
+
+        /*
+        |--------------------------------------------------------------------------
+        | Khôi phục old value nếu có
+        |--------------------------------------------------------------------------
+        */
+
+        const oldValue =
+            select.dataset.old;
+
+        if (
+            oldValue &&
+            [...select.options].some(
+                (option) =>
+                    String(option.value) ===
+                    String(oldValue)
+            )
+        ) {
+            select.value = oldValue;
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Tính phí vận chuyển
+    |--------------------------------------------------------------------------
+    */
+
+    async function calculateShippingFee() {
+        syncSelectedName(
+            ward,
+            wardName
+        );
+
+        shippingFee = null;
+
+        updateTotal();
+
+        if (
+            !district.value ||
+            !ward.value
+        ) {
+            return;
+        }
+
+        setMessage(
+            'Đang tính phí vận chuyển...'
+        );
+
+        try {
+            const data =
+                await fetchJson(
+                    routes.fee,
+                    {
+                        method: 'POST',
+
+                        headers: {
+                            'Content-Type':
+                                'application/json',
+                        },
+
+                        body: JSON.stringify({
+                            district_id:
+                                Number(
+                                    district.value
+                                ),
+
+                            ward_code:
+                                ward.value,
+
+                            insurance_value:
+                                Math.min(
+                                    subtotal,
+                                    5000000
+                                ),
+                        }),
+                    }
+                );
+
+            shippingFee =
+                Number(
+                    data.shipping_fee ?? 0
+                );
+
+            setMessage(
+                'Đã tính phí vận chuyển GHN.'
+            );
+        } catch (error) {
+            shippingFee = null;
+
+            setMessage(
+                error.message ||
+                    'Không thể tính phí vận chuyển.',
+                true
+            );
+        }
+
+        updateTotal();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | CHỌN TỈNH / THÀNH
+    |--------------------------------------------------------------------------
+    */
+
+    province.addEventListener(
+        'change',
+        async () => {
+            syncSelectedName(
+                province,
+                provinceName
+            );
+
+            /*
+            | Reset huyện + xã
+            */
+
+            resetSelect(
+                district,
+                'Đang tải quận/huyện...'
+            );
+
+            resetSelect(
+                ward,
+                'Chọn huyện trước'
+            );
+
+            districtName.value = '';
+            wardName.value = '';
+
+            shippingFee = null;
+
+            updateTotal();
+
+            if (!province.value) {
+                resetSelect(
+                    district,
+                    'Chọn tỉnh trước'
+                );
+
+                resetSelect(
+                    ward,
+                    'Chọn huyện trước'
+                );
+
+                return;
+            }
+
+            try {
+                setMessage(
+                    'Đang tải quận/huyện...'
+                );
+
+                const items =
+                    await fetchJson(
+                        `${routes.districts}/${encodeURIComponent(
+                            province.value
+                        )}`
+                    );
+
+                fillOptions(
+                    district,
+                    items,
+                    'DistrictID',
+                    'DistrictName',
+                    'Chọn quận/huyện'
+                );
+
+                syncSelectedName(
+                    district,
+                    districtName
+                );
+
+                /*
+                | Nếu có old district,
+                | tự động load xã.
+                */
+
+                if (district.value) {
+                    district.dispatchEvent(
+                        new Event('change')
+                    );
+                } else {
+                    setMessage('');
+                }
+            } catch (error) {
+                resetSelect(
+                    district,
+                    'Không tải được quận/huyện'
+                );
+
+                resetSelect(
+                    ward,
+                    'Chọn huyện trước'
+                );
+
+                setMessage(
+                    error.message ||
+                        'Không tải được quận/huyện.',
+                    true
+                );
+            }
+        }
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | CHỌN QUẬN / HUYỆN
+    |--------------------------------------------------------------------------
+    */
+
+    district.addEventListener(
+        'change',
+        async () => {
+            syncSelectedName(
+                district,
+                districtName
+            );
+
+            resetSelect(
+                ward,
+                'Đang tải phường/xã...'
+            );
+
+            wardName.value = '';
+
+            shippingFee = null;
+
+            updateTotal();
+
+            if (!district.value) {
+                resetSelect(
+                    ward,
+                    'Chọn huyện trước'
+                );
+
+                return;
+            }
+
+            try {
+                setMessage(
+                    'Đang tải phường/xã...'
+                );
+
+                const items =
+                    await fetchJson(
+                        `${routes.wards}/${encodeURIComponent(
+                            district.value
+                        )}`
+                    );
+
+                fillOptions(
+                    ward,
+                    items,
+                    'WardCode',
+                    'WardName',
+                    'Chọn phường/xã'
+                );
+
+                syncSelectedName(
+                    ward,
+                    wardName
+                );
+
+                /*
+                | Nếu có old ward thì tự động tính phí.
+                */
+
+                if (ward.value) {
+                    await calculateShippingFee();
+                } else {
+                    setMessage('');
+                }
+            } catch (error) {
+                resetSelect(
+                    ward,
+                    'Không tải được phường/xã'
+                );
+
+                setMessage(
+                    error.message ||
+                        'Không tải được phường/xã.',
+                    true
+                );
+            }
+        }
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | CHỌN PHƯỜNG / XÃ
+    |--------------------------------------------------------------------------
+    */
+
+    ward.addEventListener(
+        'change',
+        async () => {
+            syncSelectedName(
+                ward,
+                wardName
+            );
+
+            await calculateShippingFee();
+        }
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | SUBMIT CHECKOUT
+    |--------------------------------------------------------------------------
+    */
+
+    form.addEventListener(
+        'submit',
+        (event) => {
+            /*
+            | Đồng bộ tên trước khi gửi.
+            */
+
+            syncSelectedName(
+                province,
+                provinceName
+            );
+
+            syncSelectedName(
+                district,
+                districtName
+            );
+
+            syncSelectedName(
+                ward,
+                wardName
+            );
+
+            /*
+            | Kiểm tra địa chỉ.
+            */
+
+            if (
+                !province.value ||
+                !district.value ||
+                !ward.value
+            ) {
+                event.preventDefault();
+
+                setMessage(
+                    'Vui lòng chọn đầy đủ tỉnh/thành phố, quận/huyện và phường/xã.',
+                    true
+                );
+
+                return;
+            }
+
+            /*
+            | Kiểm tra phí ship.
+            */
+
+            if (shippingFee === null) {
+                event.preventDefault();
+
+                setMessage(
+                    'Vui lòng chờ hệ thống tính phí vận chuyển trước khi đặt hàng.',
+                    true
+                );
+
+                return;
+            }
+
+            /*
+            | Cho submit bình thường.
+            */
+        }
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | LOAD PROVINCES
+    |--------------------------------------------------------------------------
+    */
+
+    async function loadProvinces() {
+        try {
+            setMessage(
+                'Đang tải danh sách tỉnh/thành phố...'
+            );
+
+            const items =
+                await fetchJson(
+                    routes.provinces
+                );
+
+            fillOptions(
+                province,
+                items,
+                'ProvinceID',
+                'ProvinceName',
+                'Chọn tỉnh/thành phố'
+            );
+
+            syncSelectedName(
+                province,
+                provinceName
+            );
+
+            /*
+            | Nếu có old province thì tự động load district.
+            */
+
+            if (province.value) {
+                await new Promise(
+                    (resolve) => {
+                        const handler =
+                            () => {
+                                province.removeEventListener(
+                                    'change',
+                                    handler
+                                );
+
+                                resolve();
+                            };
+
+                        /*
+                        | Không cần dùng handler thực tế
+                        | vì change async đã tự xử lý.
+                        */
+
+                        province.dispatchEvent(
+                            new Event('change')
+                        );
+
+                        resolve();
+                    }
+                );
+            } else {
+                setMessage('');
+            }
+        } catch (error) {
+            resetSelect(
+                province,
+                'Không tải được tỉnh/thành'
+            );
+
+            resetSelect(
+                district,
+                'Chọn tỉnh trước'
+            );
+
+            resetSelect(
+                ward,
+                'Chọn huyện trước'
+            );
+
+            setMessage(
+                error.message ||
+                    'Không tải được danh sách tỉnh/thành phố.',
+                true
+            );
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | INIT
+    |--------------------------------------------------------------------------
+    */
+
+    resetSelect(
+        district,
+        'Chọn tỉnh trước'
+    );
+
+    resetSelect(
+        ward,
+        'Chọn huyện trước'
+    );
+
+    updateTotal();
+
+    loadProvinces();
+}
 
 /*
 |--------------------------------------------------------------------------
-| Init
+| DOM READY
 |--------------------------------------------------------------------------
 */
 
 document.addEventListener(
     'DOMContentLoaded',
-    initProductGalleryAndVariants
+    () => {
+        initProductGalleryAndVariants();
+        initCheckoutLocations();
+    }
 );

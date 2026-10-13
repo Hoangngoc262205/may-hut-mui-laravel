@@ -137,8 +137,9 @@
                         type="hidden"
                         name="product_variant_id"
                         id="selectedVariantId"
-                        value="{{ $defaultVariant?->id }}"
+                        value=""
                     >
+                    <p class="variant-warning" id="variantMessage">Vui lòng chọn đủ kích thước và màu sắc.</p>
 
                     {{-- SIZE --}}
                     @if($sizes->count())
@@ -231,6 +232,7 @@
                             class="btn btn-add-cart"
                             id="addToCartButton"
                             type="submit"
+                            disabled
                         >
                             <span>🛒</span>
                             Thêm vào giỏ hàng
@@ -242,6 +244,7 @@
                             type="submit"
                             name="buy_now"
                             value="1"
+                            disabled
                         >
                             Mua ngay
                         </button>
